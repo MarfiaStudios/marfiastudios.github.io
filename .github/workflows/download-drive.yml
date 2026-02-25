@@ -1,0 +1,30 @@
+name: Download Drive Folder
+
+on:
+  workflow_dispatch:
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install gdown
+        run: pip install gdown
+
+      - name: Create gme2 folder
+        run: mkdir -p gme2
+
+      - name: Download Google Drive folder
+        run: |
+          gdown --folder https://drive.google.com/drive/folders/1ou3mI5xJVQv8Vt_MvwejPtf7zStSnU-s -O gme2
+
+      - name: Commit files
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add gme2
+          git commit -m "Imported files from Google Drive" || echo "No changes"
+          git push
