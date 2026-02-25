@@ -7,26 +7,20 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
 
 <style>
-
-*{
-    box-sizing:border-box;
-    font-family:"Inter",sans-serif;
-}
-
+*{box-sizing:border-box;font-family:"Inter",sans-serif;}
 body{
     margin:0;
     min-height:100vh;
     color:white;
     display:flex;
     justify-content:center;
-    align-items:center;
+    align-items:flex-start;
     background:#0f172a;
     background-size:cover;
     background-position:center;
     transition:background 0.5s ease;
+    padding-top:30px;
 }
-
-/* dark overlay */
 body::before{
     content:"";
     position:fixed;
@@ -51,12 +45,6 @@ body::before{
     box-shadow:0 10px 30px rgba(0,0,0,.4);
 }
 
-h1{
-    text-align:center;
-    font-weight:700;
-    margin-bottom:10px;
-}
-
 .time{
     font-size:56px;
     font-weight:700;
@@ -69,17 +57,19 @@ h1{
     margin-bottom:10px;
 }
 
-select{
+select,button{
     padding:10px;
     border-radius:10px;
     border:none;
     font-size:16px;
     background:#ffffff22;
     color:white;
+    cursor:pointer;
+    margin-top:10px;
 }
 
-select option{
-    color:black;
+button:hover, select:hover{
+    background:#ffffff33;
 }
 
 .center{text-align:center;}
@@ -94,14 +84,39 @@ select option{
     opacity:.9;
 }
 
+#shortcuts{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:12px;
+    margin-top:15px;
+}
+
+.shortcut{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    width:80px;
+    text-align:center;
+    text-decoration:none;
+    color:white;
+    font-size:14px;
+}
+
+.shortcut img{
+    width:48px;
+    height:48px;
+    margin-bottom:6px;
+    border-radius:8px;
+    background:white;
+}
+
 </style>
 </head>
 
 <body>
 
 <div class="container">
-
-<h1>📚 Student Dashboard</h1>
 
 <div class="card">
     <div id="date" class="date"></div>
@@ -121,34 +136,33 @@ select option{
     <div id="countdown"></div>
 </div>
 
+<div class="card center">
+    <button id="addShortcutBtn">➕ Add Shortcut</button>
+    <div id="shortcuts"></div>
+</div>
+
 </div>
 
 <script>
 
-/* ---------- AUTO BACKGROUND ---------- */
+/* ---------- BACKGROUND ---------- */
 const img = new Image();
 img.src = "image.jpg";
-
-img.onload = () => {
-    document.body.style.backgroundImage =
-        "url('image.jpg')";
-};
+img.onload = () => { document.body.style.backgroundImage = "url('image.jpg')"; };
 
 /* ---------- COOKIE FUNCTIONS ---------- */
 function setCookie(name,value,days){
     let d=new Date();
     d.setTime(d.getTime()+days*86400000);
-    document.cookie=name+"="+value+";expires="+d.toUTCString()+";path=/";
+    document.cookie=name+"="+encodeURIComponent(value)+";expires="+d.toUTCString()+";path=/";
 }
-
 function getCookie(name){
     let match=document.cookie.match(new RegExp('(^| )'+name+'=([^;]+)'));
-    return match?match[2]:"";
+    return match?decodeURIComponent(match[2]):"";
 }
 
-/* ---------- SCHEDULES (EDIT TIMES) ---------- */
+/* ---------- SCHEDULE ---------- */
 const schedules={
-
 normal:[
 {name:"1st Period",start:"08:00",end:"08:50"},
 {name:"2nd Period",start:"08:55",end:"09:45"},
@@ -158,7 +172,6 @@ normal:[
 {name:"5th Period",start:"12:15",end:"13:05"},
 {name:"6th Period",start:"13:10",end:"14:00"}
 ],
-
 delay:[
 {name:"1st Period",start:"10:00",end:"10:40"},
 {name:"2nd Period",start:"10:45",end:"11:25"},
@@ -168,72 +181,81 @@ delay:[
 {name:"5th Period",start:"13:35",end:"14:15"},
 {name:"6th Period",start:"14:20",end:"15:00"}
 ]
-
 };
 
 /* ---------- CLOCK ---------- */
 function updateClock(){
     const now=new Date();
-
     clock.textContent=now.toLocaleTimeString();
-
     date.textContent=now.toLocaleDateString(undefined,{
-        weekday:"long",
-        month:"long",
-        day:"numeric",
-        year:"numeric"
+        weekday:"long", month:"long", day:"numeric", year:"numeric"
     });
 }
 
 /* ---------- CLASS TIMER ---------- */
-function toMin(t){
-    let [h,m]=t.split(":");
-    return h*60+ +m;
-}
-
+function toMin(t){let [h,m]=t.split(":"); return h*60+ +m;}
 function updateClass(){
     const type=scheduleSelect.value;
     const schedule=schedules[type];
-
     const now=new Date();
     const current=now.getHours()*60+now.getMinutes();
-
-    let name="No class right now";
-    let cd="";
-
+    let name="No class right now"; let cd="";
     for(let c of schedule){
-        let s=toMin(c.start);
-        let e=toMin(c.end);
-
+        let s=toMin(c.start), e=toMin(c.end);
         if(current>=s && current<=e){
             name=c.name;
-
             let remaining=e-current;
             cd=`Ends in ${remaining} minutes`;
             break;
         }
     }
-
     currentClass.textContent=name;
     countdown.textContent=cd;
 }
 
 /* ---------- SAVE SCHEDULE ---------- */
-scheduleSelect.onchange=()=>{
-    setCookie("scheduleType",scheduleSelect.value,365);
-};
-
+scheduleSelect.onchange=()=>{ setCookie("scheduleType",scheduleSelect.value,365); };
 let saved=getCookie("scheduleType");
 if(saved) scheduleSelect.value=saved;
 
-/* ---------- LOOP ---------- */
-setInterval(()=>{
-    updateClock();
-    updateClass();
-},1000);
+/* ---------- SHORTCUTS ---------- */
+let shortcuts=[];
+function loadShortcuts(){
+    let saved=getCookie("shortcuts");
+    if(saved) shortcuts=JSON.parse(saved);
+    renderShortcuts();
+}
+function renderShortcuts(){
+    const container=document.getElementById("shortcuts");
+    container.innerHTML="";
+    shortcuts.forEach(s=>{
+        let a=document.createElement("a");
+        a.href=s.url; a.target="_blank"; a.className="shortcut";
+        let img=document.createElement("img");
+        img.src=s.favicon;
+        let span=document.createElement("span");
+        span.textContent=s.name;
+        a.appendChild(img);
+        a.appendChild(span);
+        container.appendChild(a);
+    });
+}
+document.getElementById("addShortcutBtn").onclick=async()=>{
+    let url=prompt("Enter website URL (https://example.com)");
+    if(!url) return;
+    if(!url.startsWith("http")) url="https://"+url;
+    let name=url.replace(/https?:\/\/(www\.)?/,"").split(/[\/.]/)[0];
+    let favicon=url.split("/")[0]+"/favicon.ico";
+    favicon="https://www.google.com/s2/favicons?domain="+new URL(url).hostname;
+    shortcuts.push({url,name,favicon});
+    setCookie("shortcuts",JSON.stringify(shortcuts),365);
+    renderShortcuts();
+};
 
-updateClock();
-updateClass();
+/* ---------- INIT ---------- */
+loadShortcuts();
+setInterval(()=>{ updateClock(); updateClass(); },1000);
+updateClock(); updateClass();
 
 </script>
 </body>
